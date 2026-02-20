@@ -1,4 +1,5 @@
-EntityIdentifier,HasAmmunitionSupplyCap
-VRF262162:102,True
-VRF262162:1,False
-VRF262162:100,False
+ForceIdentifier,SimTime,Spatial_FPB_Orientation_phi
+2,0.5,-1.5707939863204956
+1,0.5,1.645151972770691
+2,0.5,-1.5707939863204956
+2,0.5,-1.5707939863204956
