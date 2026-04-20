@@ -7,9 +7,16 @@ import streamlit as st
 from chart_generator import generate_chart
 from config import DEFAULT_MODEL, DEFAULT_OLLAMA_BASE_URL, DEFAULT_TEMPERATURE
 from data_loader import load_csv_bytes, load_jsonl_bytes
+from export_utils import png_bytes_to_jpeg_bytes, png_bytes_to_pdf_bytes
 
 
 st.set_page_config(page_title="LLM Viz (Light)", layout="wide")
+
+if "last_result" not in st.session_state:
+    st.session_state["last_result"] = None
+
+if "last_df_loaded" not in st.session_state:
+    st.session_state["last_df_loaded"] = False
 
 st.title("LLM Viz — Version Light")
 st.caption("")
@@ -92,9 +99,10 @@ with col_right:
                     sample_n_schema=int(sample_n_schema),
                     max_each_candidates=int(max_each_candidates),
                 )
+                st.session_state["last_result"] = result
             except Exception as e:
                 st.error(f"Echec de l'appel au llm: {e}")
-                result = {
+                st.session_state["last_result"] = {
                     "error": traceback.format_exc(),
                     "code": "",
                     "png_bytes": None,
@@ -102,6 +110,9 @@ with col_right:
                     "raw_model_output": "",
                 }
 
+    result = st.session_state.get("last_result")
+
+    if result:
         if result.get("candidate_cols") and show_schema:
             with st.expander("Colonnes candidates (cat / num / time)", expanded=False):
                 st.write(result["candidate_cols"])
@@ -114,6 +125,39 @@ with col_right:
         if result.get("png_bytes"):
             st.subheader("3) Graphe")
             st.image(result["png_bytes"], width=1200)
+
+            png_bytes = result["png_bytes"]
+            jpeg_bytes = png_bytes_to_jpeg_bytes(png_bytes)
+            pdf_bytes = png_bytes_to_pdf_bytes(png_bytes)
+
+            dl1, dl2, dl3 = st.columns(3)
+
+            with dl1:
+                st.download_button(
+                    "Télécharger PNG",
+                    data=png_bytes,
+                    file_name="graph.png",
+                    mime="image/png",
+                    use_container_width=True,
+                )
+
+            with dl2:
+                st.download_button(
+                    "Télécharger JPEG",
+                    data=jpeg_bytes,
+                    file_name="graph.jpeg",
+                    mime="image/jpeg",
+                    use_container_width=True,
+                )
+
+            with dl3:
+                st.download_button(
+                    "Télécharger PDF",
+                    data=pdf_bytes,
+                    file_name="graph.pdf",
+                    mime="application/pdf",
+                    use_container_width=True,
+                )
 
         st.subheader("4) Code généré")
         st.code(result.get("code", ""), language="python")

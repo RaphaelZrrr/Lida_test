@@ -15,4 +15,4 @@ Rules:
 - For relationship between two numeric columns -> seaborn scatterplot.
 - For trend over time -> sort by x, then seaborn lineplot.
 - If user mentions a filter (col = value), apply df = df[df[col] == value] before plotting.
-"""
+- For any bar chart or categorical x-axis, always add: plt.xticks(rotation=45)"""
