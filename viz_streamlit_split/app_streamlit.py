@@ -9,11 +9,54 @@ from config import DEFAULT_MODEL, DEFAULT_OLLAMA_BASE_URL, DEFAULT_TEMPERATURE
 from data_loader import load_csv_bytes, load_jsonl_bytes
 from export_utils import png_bytes_to_jpeg_bytes, png_bytes_to_pdf_bytes
 
+from auth_repository import create_user, authenticate_user
+from chart_repository import save_chart, get_user_charts
+from export_utils import png_bytes_to_jpeg_bytes, png_bytes_to_pdf_bytes
+
 
 st.set_page_config(page_title="LLM Viz (Light)", layout="wide")
 
+if "authenticated" not in st.session_state:
+    st.session_state["authenticated"] = False
+
+if "username" not in st.session_state:
+    st.session_state["username"] = None
+
 if "last_result" not in st.session_state:
     st.session_state["last_result"] = None
+
+if "last_result" not in st.session_state:
+    st.session_state["last_result"] = None
+
+if not st.session_state["authenticated"]:
+    st.title("Connexion")
+
+    tab1, tab2 = st.tabs(["Se connecter", "S'inscrire"])
+
+    with tab1:
+        login_username = st.text_input("Nom d'utilisateur", key="login_username")
+        login_password = st.text_input("Mot de passe", type="password", key="login_password")
+
+        if st.button("Connexion"):
+            if authenticate_user(login_username, login_password):
+                st.session_state["authenticated"] = True
+                st.session_state["username"] = login_username
+                st.rerun()
+            else:
+                st.error("Identifiants invalides.")
+
+    with tab2:
+        register_username = st.text_input("Nouveau nom d'utilisateur", key="register_username")
+        register_password = st.text_input("Nouveau mot de passe", type="password", key="register_password")
+
+        if st.button("Créer le compte"):
+            ok, msg = create_user(register_username, register_password)
+            if ok:
+                st.success(msg)
+            else:
+                st.error(msg)
+
+    st.stop()
 
 if "last_df_loaded" not in st.session_state:
     st.session_state["last_df_loaded"] = False
@@ -22,6 +65,15 @@ st.title("LLM Viz — Version Light")
 st.caption("")
 
 with st.sidebar:
+
+    st.write(f"Connecté en tant que : {st.session_state['username']}")
+
+    if st.button("Se déconnecter"):
+        st.session_state["authenticated"] = False
+        st.session_state["username"] = None
+        st.session_state["last_result"] = None
+        st.rerun()
+
     st.subheader("Connexion LLM")
     base_url = st.text_input("Ollama base URL", value=DEFAULT_OLLAMA_BASE_URL)
     model_name = st.text_input("Model", value=DEFAULT_MODEL)
@@ -130,6 +182,18 @@ with col_right:
             jpeg_bytes = png_bytes_to_jpeg_bytes(png_bytes)
             pdf_bytes = png_bytes_to_pdf_bytes(png_bytes)
 
+            save_chart(
+                username=st.session_state["username"],
+                question=question,
+                generated_code=result.get("code", ""),
+                raw_model_output=result.get("raw_model_output", ""),
+                candidate_cols=result.get("candidate_cols", {}),
+                png_bytes=png_bytes,
+                jpeg_bytes=jpeg_bytes,
+                pdf_bytes=pdf_bytes,
+                original_filename=uploaded.name if uploaded else None,
+            )
+
             dl1, dl2, dl3 = st.columns(3)
 
             with dl1:
@@ -167,4 +231,45 @@ with col_right:
                 st.code(result.get("raw_model_output", ""), language="text")
 
     st.divider()
+
+    with st.expander("Historique de mes graphes", expanded=False):
+        history = get_user_charts(st.session_state["username"])
+
+        if not history:
+            st.write("Aucun graphe enregistré.")
+        else:
+            for item in history:
+                st.markdown("---")
+                st.write("Date :", item.get("created_at"))
+                st.write("Question :", item.get("question", ""))
+
+                if item.get("png_bytes"):
+                    st.image(item["png_bytes"], width=500)
+
+                st.download_button(
+                    "Télécharger PNG",
+                    data=item["png_bytes"],
+                    file_name="graph.png",
+                    mime="image/png",
+                    key=f"hist_png_{item['_id']}",
+                )
+
+                if item.get("jpeg_bytes"):
+                    st.download_button(
+                        "Télécharger JPEG",
+                        data=item["jpeg_bytes"],
+                        file_name="graph.jpeg",
+                        mime="image/jpeg",
+                        key=f"hist_jpeg_{item['_id']}",
+                    )
+
+                if item.get("pdf_bytes"):
+                    st.download_button(
+                        "Télécharger PDF",
+                        data=item["pdf_bytes"],
+                        file_name="graph.pdf",
+                        mime="application/pdf",
+                        key=f"hist_pdf_{item['_id']}",
+                    )
+    
     st.caption("Température = 0 conseillé + Éviter les prompts trop longs.")
