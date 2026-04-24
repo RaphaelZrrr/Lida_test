@@ -43,3 +43,19 @@ def delete_chart(chart_id: str, username: str):
         "_id": ObjectId(chart_id),
         "username": username
     })
+
+def increment_download_count(chart_id: str, fmt: str):
+    field_map = {
+        "png": "download_png_count",
+        "jpeg": "download_jpeg_count",
+        "pdf": "download_pdf_count",
+    }
+
+    field = field_map.get(fmt)
+    if not field:
+        return
+
+    charts_collection.update_one(
+        {"_id": ObjectId(chart_id)},
+        {"$inc": {field: 1}}
+    )

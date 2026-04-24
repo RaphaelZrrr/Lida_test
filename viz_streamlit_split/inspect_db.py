@@ -11,7 +11,7 @@ for user in users_collection.find({}, {"username": 1, "created_at": 1}):
         }
     )
 
-print("\n=== CHARTS ===")
+print("\n=== Graphes ===")
 for chart in charts_collection.find(
     {},
     {

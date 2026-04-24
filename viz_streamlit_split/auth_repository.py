@@ -30,3 +30,6 @@ def authenticate_user(username: str, password: str) -> bool:
         return False
 
     return verify_password(password, user["password_hash"])
+
+def get_user_by_username(username: str):
+    return users_collection.find_one({"username": username.strip()})

@@ -13,8 +13,13 @@ from auth_repository import create_user, authenticate_user
 from chart_repository import save_chart, get_user_charts
 from export_utils import png_bytes_to_jpeg_bytes, png_bytes_to_pdf_bytes
 
+from chart_repository import increment_download_count
+
 
 st.set_page_config(page_title="LLM Viz (Light)", layout="wide")
+
+if "last_chart_id" not in st.session_state:
+    st.session_state["last_chart_id"] = None
 
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
@@ -194,34 +199,39 @@ with col_right:
                 original_filename=uploaded.name if uploaded else None,
             )
 
+            st.session_state["last_chart_id"] = chart_id
+
             dl1, dl2, dl3 = st.columns(3)
 
             with dl1:
-                st.download_button(
+                if st.download_button(
                     "Télécharger PNG",
                     data=png_bytes,
                     file_name="graph.png",
                     mime="image/png",
                     use_container_width=True,
-                )
+                ) and chart_id:
+                    increment_download_count(chart_id, "png")
 
             with dl2:
-                st.download_button(
+                if st.download_button(
                     "Télécharger JPEG",
                     data=jpeg_bytes,
                     file_name="graph.jpeg",
                     mime="image/jpeg",
                     use_container_width=True,
-                )
+                ) and chart_id:
+                    increment_download_count(chart_id, "jpeg")
 
             with dl3:
-                st.download_button(
+                if st.download_button(
                     "Télécharger PDF",
                     data=pdf_bytes,
                     file_name="graph.pdf",
                     mime="application/pdf",
                     use_container_width=True,
-                )
+                ) and chart_id:
+                    increment_download_count(chart_id, "pdf")
 
         st.subheader("4) Code généré")
         st.code(result.get("code", ""), language="python")
