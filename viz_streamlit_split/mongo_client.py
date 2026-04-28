@@ -8,3 +8,4 @@ db = client[DB_NAME]
 
 users_collection = db["users"]
 charts_collection = db["charts"]
+dashboards_collection = db["dashboards"]

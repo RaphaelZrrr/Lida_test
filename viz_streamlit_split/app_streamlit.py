@@ -187,7 +187,7 @@ with col_right:
             jpeg_bytes = png_bytes_to_jpeg_bytes(png_bytes)
             pdf_bytes = png_bytes_to_pdf_bytes(png_bytes)
 
-            save_chart(
+            chart_id = save_chart(
                 username=st.session_state["username"],
                 question=question,
                 generated_code=result.get("code", ""),
