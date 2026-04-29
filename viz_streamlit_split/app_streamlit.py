@@ -15,6 +15,8 @@ from export_utils import png_bytes_to_jpeg_bytes, png_bytes_to_pdf_bytes
 
 from chart_repository import increment_download_count
 
+from code_executor import exec_code_to_png
+
 
 st.set_page_config(page_title="LLM Viz (Light)", layout="wide")
 
@@ -32,6 +34,15 @@ if "last_result" not in st.session_state:
 
 if "last_result" not in st.session_state:
     st.session_state["last_result"] = None
+
+if "editable_code" not in st.session_state:
+    st.session_state["editable_code"] = ""
+
+if "editable_code_area" not in st.session_state:
+    st.session_state["editable_code_area"] = ""
+
+if "current_df" not in st.session_state:
+    st.session_state["current_df"] = None
 
 if not st.session_state["authenticated"]:
     st.title("Connexion")
@@ -124,6 +135,8 @@ with col_left:
                 df = load_csv_bytes(data_bytes)
             else:
                 df = load_jsonl_bytes(data_bytes, sample_rows=int(sample_rows_jsonl))
+
+            st.session_state["current_df"] = df    
             st.success(f"Loaded {uploaded.name} — shape: {df.shape}")
         except Exception as e:
             st.error(f"Echec de chargement du fichier: {e}")
@@ -157,6 +170,11 @@ with col_right:
                     max_each_candidates=int(max_each_candidates),
                 )
                 st.session_state["last_result"] = result
+
+                new_code = result.get("code", "")
+                st.session_state["editable_code"] = new_code
+                st.session_state["editable_code_area"] = new_code
+                
             except Exception as e:
                 st.error(f"Echec de l'appel au llm: {e}")
                 st.session_state["last_result"] = {
@@ -233,8 +251,43 @@ with col_right:
                 ) and chart_id:
                     increment_download_count(chart_id, "pdf")
 
-        st.subheader("4) Code généré")
-        st.code(result.get("code", ""), language="python")
+        st.subheader("4) Code généré / modifiable")
+
+        edited_code = st.text_area(
+            "Code Python",
+            height=300,
+            key="editable_code_area",
+        )
+
+        st.session_state["editable_code"] = edited_code
+
+        run_code_btn = st.button("Exécuter le code modifié", use_container_width=True)
+
+
+        if run_code_btn:
+            current_df = st.session_state.get("current_df")
+
+            if current_df is None:
+                st.error("Aucun dataset chargé.")
+            else:
+                with st.spinner("Exécution du code modifié..."):
+                    png_bytes, tb = exec_code_to_png(st.session_state["editable_code"], current_df)
+
+                if tb:
+                    st.error("Erreur d'exécution du code modifié")
+                    with st.expander("Traceback du code modifié", expanded=True):
+                        st.code(tb, language="text")
+                else:
+                    st.success("Code modifié exécuté avec succès.")
+
+                    if "last_result" not in st.session_state or st.session_state["last_result"] is None:
+                        st.session_state["last_result"] = {}
+
+                    st.session_state["last_result"]["png_bytes"] = png_bytes
+                    st.session_state["last_result"]["error"] = None
+                    st.session_state["last_result"]["code"] = st.session_state["editable_code"]
+
+                    st.rerun()
 
         if show_raw:
             with st.expander("Output"):

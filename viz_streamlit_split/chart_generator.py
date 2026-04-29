@@ -6,7 +6,7 @@ from code_executor import exec_code_to_png
 from config import SYSTEM_PROMPT
 from data_loader import sanitize_nested_cols
 from llm_client import extract_python_code, ollama_chat, strip_import_lines
-from schema_utils import pick_candidates_from_schema, build_light_schema
+from schema_utils import pick_candidates_from_schema, build_light_schema, build_categorical_examples
 
 
 def generate_chart(
@@ -19,6 +19,7 @@ def generate_chart(
     max_each_candidates: int,
 ) -> Dict[str, Any]:
     df = sanitize_nested_cols(df)
+    
 
     schema = build_light_schema(df, sample_n=sample_n_schema)
     cat_cols, num_cols, time_cols = pick_candidates_from_schema(
@@ -26,6 +27,9 @@ def generate_chart(
     )
 
     all_columns = list(df.columns)
+
+    categorical_examples = build_categorical_examples(df, cat_cols)
+
 
     user_prompt = f"""
 ALL COLUMNS:
@@ -35,6 +39,9 @@ CANDIDATE COLUMNS (auto-detected from a light schema):
 - categorical_cols: {cat_cols}
 - numeric_cols: {num_cols}
 - time_cols: {time_cols}
+
+EXAMPLE VALUES FOR CATEGORICAL COLUMNS:
+{categorical_examples}
 
 USER QUESTION:
 {question}
